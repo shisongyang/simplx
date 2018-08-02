@@ -1119,7 +1119,7 @@ bool Actor::EventTable::onEvent(const Event &event, uint64_t &performanceCounter
     ++performanceCounter;
     assert(hfEvent[i].staticEventHandler != 0);
 
-    EventFlowTracer* eft = EventFlowTracer::OnEventHookStart(static_cast<Actor*>(hfEvent[i].eventHandler)->getAsyncNode());
+    EventFlowTracer* eft = EventFlowTracer::OnEventHookStart(static_cast<Actor*>(hfEvent[i].eventHandler)->getAsyncNode(), &event, static_cast<Actor*>(hfEvent[i].eventHandler));
     bool ret =  (*hfEvent[i].staticEventHandler)(hfEvent[i].eventHandler, event);
     eft->OnEventHookStop();
     return ret;

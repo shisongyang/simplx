@@ -1119,8 +1119,12 @@ template <class _Actor> Actor::ActorId Engine::newCore(CoreId coreId, bool isRed
 {
     struct NewActorCoreStarter : NewCoreStarter
     {
-		virtual Actor::ActorId start(AsyncNode& node) {
-		_Actor& actor = Actor::newActor<_Actor>(node);
+		virtual Actor::ActorId start(AsyncNode& node)
+        {
+            EventFlowTracer* eft = EventFlowTracer::OnConstructorHookStart(&node, nullptr);
+            _Actor& actor = Actor::newActor<_Actor>(node);
+            eft->OnConstructorHookStop(&actor);
+
 #ifdef DEBUG_REF
     std::ostringstream stm;
     stm << "NewActorCoreStarter::start;-1.-1;" << cppDemangledTypeInfoName(typeid(*this)) << ";" << actor.actorId << ";" << cppDemangledTypeInfoName(typeid(actor)) << "\n";
@@ -1142,8 +1146,10 @@ Actor::ActorId Engine::newCore(CoreId coreId, bool isRedZone, const _ActorInit &
         inline NewActorCoreStarter(const _ActorInit &pactorInit) noexcept : actorInit(pactorInit) {}
         virtual Actor::ActorId start(AsyncNode &node)
         {
+            EventFlowTracer* eft = EventFlowTracer::OnConstructorHookStart(&node, nullptr);
 			_Actor& actor = Actor::newActor<_Actor>(node, actorInit);
-            
+            eft->OnConstructorHookStop(&actor);
+
             #ifdef DEBUG_REF
                 std::ostringstream stm;
                 stm << "NewActorCoreStarter::start;-1.-1;" << cppDemangledTypeInfoName(typeid(*this)) << ";" << actor.actorId << ";" << cppDemangledTypeInfoName(typeid(actor)) << "\n";
@@ -1165,8 +1171,9 @@ template <class _Actor> void Engine::StartSequence::addActor(CoreId coreId)
         virtual ~AddActorStarter() noexcept {}
         virtual Actor::ActorId onStart(Engine &, AsyncNode &node, const Actor::ActorId &, bool) const
         {
+            EventFlowTracer* eft = EventFlowTracer::OnConstructorHookStart(&node, nullptr);
 			_Actor  &actor = Actor::newActor<_Actor>(node);
-            (void)actor;
+            eft->OnConstructorHookStop(&actor);
             
             #ifdef DEBUG_REF
                 std::ostringstream stm;
@@ -1193,8 +1200,9 @@ void Engine::StartSequence::addActor(CoreId coreId, const _ActorInit &actorInit)
         
         virtual Actor::ActorId onStart(Engine&, AsyncNode& node, const Actor::ActorId&, bool) const
         {
+            EventFlowTracer* eft = EventFlowTracer::OnConstructorHookStart(&node, nullptr);
             _Actor  &actor = Actor::newActor<_Actor, _ActorInit>(node, this->actorInit);
-            (void)actor;
+            eft->OnConstructorHookStop(&actor);
             
             #ifdef DEBUG_REF
                 std::ostringstream stm;
@@ -1227,10 +1235,14 @@ void Engine::StartSequence::addServiceActor(CoreId coreId, const _ActorInit &act
                                             const Actor::ActorId &previousServiceDestroyActorId,
                                             bool isLastService) const
         {
+
+
+            EventFlowTracer* eft = EventFlowTracer::OnConstructorHookStart(&asyncNode, nullptr);
             ServiceActorWrapper<_Actor, _ActorInit> &serviceActor = *new (
                 Actor::Allocator<ServiceActorWrapper<_Actor, _ActorInit>>(Actor::AllocatorBase(asyncNode))
                     .allocate(1)) ServiceActorWrapper<_Actor, _ActorInit>(asyncNode, this->actorInit,
                                                                           previousServiceDestroyActorId, isLastService);
+            eft->OnConstructorHookStop(&serviceActor);
             if (AsyncEngineStartSequenceServiceTraits<_Service>::isAnonymous() == false)
             {
                 assert(engine.serviceIndex.getServiceActorId<_Service>() == tredzone::null);

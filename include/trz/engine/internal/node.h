@@ -20,12 +20,15 @@
 
 #include "trz/engine/RefMapper.h"
 
+#include "../../eventflowtracer.h"
+
 #define CRITICAL_ASSERT(x)                                                                                             \
     if (!(x))                                                                                                          \
     {                                                                                                                  \
         std::cout << "CRITICAL_ASSERT(" << __FILE__ << ':' << __LINE__ << ')' << std::endl;                            \
         exit(-1);                                                                                                      \
     }
+
 
 namespace tredzone
 {
@@ -765,6 +768,11 @@ class AsyncNode : private AsyncNodeBase, public AsyncNodeManager::Node
     typedef CoreSet::UndefinedCoreException UndefinedCoreException;
     typedef Engine::CoreInUseException CoreInUseException;
     typedef AsyncEngineCustomEventLoopFactory EventLoopFactory;
+
+
+    EventFlowTracer eventFlowTracer;
+    EventFlowTracer& getEventFlowTracer(){return eventFlowTracer;}
+
     class Thread
     {
       public:
@@ -929,7 +937,9 @@ class AsyncNode : private AsyncNodeBase, public AsyncNodeManager::Node
                 if (callback.nodeActorId == callback.actorEventTable->nodeActorId)
                 {
                     ++performanceCounter;
+                    EventFlowTracer* eft = EventFlowTracer::OnCallbackHookStart(callback.actorEventTable->asyncActor->getAsyncNode(), static_cast<Actor::Callback*>(&callback), callback.actorEventTable->asyncActor);
                     (*callback.onCallback)(callback);
+                    eft->OnCallbackHookStop();
                 }
             }
             return 1;
@@ -1108,7 +1118,11 @@ bool Actor::EventTable::onEvent(const Event &event, uint64_t &performanceCounter
     }
     ++performanceCounter;
     assert(hfEvent[i].staticEventHandler != 0);
-    return (*hfEvent[i].staticEventHandler)(hfEvent[i].eventHandler, event);
+
+    EventFlowTracer* eft = EventFlowTracer::OnEventHookStart(static_cast<Actor*>(hfEvent[i].eventHandler)->getAsyncNode());
+    bool ret =  (*hfEvent[i].staticEventHandler)(hfEvent[i].eventHandler, event);
+    eft->OnEventHookStop();
+    return ret;
 }
 
 bool AsyncNodesHandle::ReaderSharedHandle::returnToSender(const Actor::Event &event) noexcept

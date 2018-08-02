@@ -22,8 +22,11 @@
 
 #include "trz/engine/RefMapper.h"
 
+#include "../../eventflowtracer.h"
+
 namespace tredzone
 {
+
 
 class AsyncNode;
 struct AsyncNodeBase;
@@ -37,6 +40,9 @@ class AsyncEngineToEngineConnector;
 class AsyncEngineToEngineSerialConnector;
 class AsyncEngineToEngineSharedMemoryConnector;
 class AsyncEngineToEngineConnectorEventFactory;
+
+using EventFlowTracer = EventFlowTracer_t<AsyncNode, Actor>;
+
 
 struct FeatureNotImplementedException : std::exception
 {
@@ -2673,6 +2679,7 @@ template <class T> class Actor::Event::Allocator : public Actor::Event::Allocato
  * thread-safety with optimum performances. Event::Allocator has to be initialized
  * using the very Event::Pipe instance with which the event was pushed.
  */
+
 class Actor::Event::Pipe
 {
   public:
@@ -2746,11 +2753,13 @@ class Actor::Event::Pipe
      * @throw ? Any other exception possibly thrown depending on _Event (the template generic type)
      * constructor call.
      */
+
     template <class _Event> inline _Event &push()
     {
         EventChain *destinationEventChain;
         _Event *ret = newEvent<_Event>(destinationEventChain);
         destinationEventChain->push_back(ret);
+        EventFlowTracer::OnPushHook(sourceActor.getAsyncNode(), ret, &sourceActor);
         return *ret;
     }
     /**
@@ -2775,6 +2784,7 @@ class Actor::Event::Pipe
         EventChain *destinationEventChain;
         _Event *ret = newEvent<_Event>(destinationEventChain, eventInit);
         destinationEventChain->push_back(ret);
+        EventFlowTracer::OnPushHook(sourceActor.getAsyncNode(), ret, &sourceActor);
         return *ret;
     }
     /**
@@ -2999,6 +3009,7 @@ class Actor::Event::BufferedPipe : public Actor::Event::Pipe
         _Event *ret = newEvent<_Event>(destinationEventChain);
         assert(oldDestinationEventChain == 0 || oldDestinationEventChain == destinationEventChain);
         eventChain.push_back(ret);
+        EventFlowTracer::OnPushHook(sourceActor.getAsyncNode(), ret, &sourceActor);
         return *ret;
     }
     /**
@@ -3033,6 +3044,7 @@ class Actor::Event::BufferedPipe : public Actor::Event::Pipe
         _Event *ret = newEvent<_Event>(destinationEventChain, eventInit);
         assert(oldDestinationEventChain == 0 || oldDestinationEventChain == destinationEventChain);
         eventChain.push_back(ret);
+        EventFlowTracer::OnPushHook(sourceActor.getAsyncNode(), ret, &sourceActor);
         return *ret;
     }
     /**
@@ -3177,8 +3189,10 @@ Actor::ActorReference<_AsyncActor> Actor::referenceLocalActor(const ActorId &pac
 
 template <class _AsyncActor> Actor::ActorReference<_AsyncActor> Actor::newReferencedActor()
 {
+    EventFlowTracer* eft = EventFlowTracer::OnConstructorHookStart(asyncNode, this);
     _AsyncActor &actor = newActor<_AsyncActor>(*asyncNode);
-    
+    eft->OnConstructorHookStop(&actor);
+
     #ifdef DEBUG_REF
         std::ostringstream stm;
         stm << "Actor::newReferencedActor;" << actorId << ";" << cppDemangledTypeInfoName(typeid(*this)) << ";" << actor.actorId << ";Null\n";
@@ -3199,7 +3213,9 @@ template <class _AsyncActor> Actor::ActorReference<_AsyncActor> Actor::newRefere
 template <class _AsyncActor, class _AsyncActorInit>
 Actor::ActorReference<_AsyncActor> Actor::newReferencedActor(const _AsyncActorInit &init)
 {
+    EventFlowTracer* eft = EventFlowTracer::OnConstructorHookStart(asyncNode, this);
     _AsyncActor &actor = newActor<_AsyncActor>(*asyncNode, init);
+    eft->OnConstructorHookStop(&actor);
 
     #ifdef DEBUG_REF
         std::ostringstream stm;
@@ -3251,7 +3267,9 @@ template <class _AsyncActor> Actor::ActorReference<_AsyncActor> Actor::newRefere
 template<class _AsyncActor>
 const Actor::ActorId& Actor::newUnreferencedActor()
 {
+    EventFlowTracer* eft = EventFlowTracer::OnConstructorHookStart(asyncNode, this);
 	_AsyncActor& actor = newActor<_AsyncActor>(*asyncNode);
+    eft->OnConstructorHookStop(&actor);
 
     #ifdef DEBUG_REF
         std::ostringstream stm;
@@ -3296,7 +3314,9 @@ Actor::ActorReference<_AsyncActor> Actor::newReferencedSingletonActor(const _Asy
 template<class _AsyncActor, class _AsyncActorInit>
 const Actor::ActorId& Actor::newUnreferencedActor(const _AsyncActorInit& init)
 {
+    EventFlowTracer* eft = EventFlowTracer::OnConstructorHookStart(asyncNode, this);
 	_AsyncActor& actor = newActor<_AsyncActor>(*asyncNode, init);
+    eft->OnConstructorHookStop(&actor);
 
     #ifdef DEBUG_REF
         std::ostringstream stm;

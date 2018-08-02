@@ -15,6 +15,12 @@ using namespace std;
 namespace tredzone
 {
 
+template<>
+EventFlowTracer* EventFlowTracer::get(AsyncNode* pNode)
+{
+    return &pNode->eventFlowTracer;
+}
+
 const int Actor::MAX_NODE_COUNT;
 const int Actor::MAX_EVENT_ID_COUNT;
 
@@ -677,6 +683,7 @@ void Actor::registerCallback(void (*ponCallback)(Callback &) noexcept, Callback 
     pcallback.actorEventTable = &eventTable;
     pcallback.nodeActorId = eventTable.nodeActorId;
     pcallback.onCallback = ponCallback;
+    EventFlowTracer::OnRegisterCallbackHook(pcallback.actorEventTable->asyncActor->getAsyncNode(), &pcallback, pcallback.actorEventTable->asyncActor);
 }
 
 void Actor::registerPerformanceNeutralCallback(void (*ponCallback)(Callback &) noexcept,
@@ -687,6 +694,7 @@ void Actor::registerPerformanceNeutralCallback(void (*ponCallback)(Callback &) n
     pcallback.actorEventTable = &eventTable;
     pcallback.nodeActorId = eventTable.nodeActorId;
     pcallback.onCallback = ponCallback;
+    EventFlowTracer::OnRegisterCallbackHook(pcallback.actorEventTable->asyncActor->getAsyncNode(), &pcallback, pcallback.actorEventTable->asyncActor);
 }
 
 Actor::AllocatorBase::AllocatorBase(AsyncNode &asyncNode) noexcept : asyncNodeAllocator(&asyncNode.nodeAllocator)

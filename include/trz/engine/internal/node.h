@@ -20,7 +20,7 @@
 
 #include "trz/engine/RefMapper.h"
 
-#include "../../eventflowtracer.h"
+#include "../../util/eventflowtracer.h"
 
 #define CRITICAL_ASSERT(x)                                                                                             \
     if (!(x))                                                                                                          \

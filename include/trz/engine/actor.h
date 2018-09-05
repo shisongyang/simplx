@@ -22,7 +22,7 @@
 
 #include "trz/engine/RefMapper.h"
 
-#include "../../eventflowtracer.h"
+#include "../util/eventflowtracer.h"
 
 namespace tredzone
 {
